@@ -1,0 +1,10 @@
+# Secretos y entorno local: nunca se publican
+.env
+.venv/
+__pycache__/
+.claude/
+# Cachés y registros del Mac
+data/*.log
+data/boe_cache.json
+data/geo_cache.json
+data/contacts.json

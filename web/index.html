@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MiRancho</title>
+  <meta name="description" content="Casas rurales y de pueblo baratas en España e Italia, con riesgos, reforma y entorno analizados">
+  <meta name="theme-color" content="#0b0f14">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MiRancho">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = JSON.parse(t); } catch {}</script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="icon.svg" alt="" width="34" height="34">
+      <div>
+        <h1><span class="mi">Mi</span>Rancho</h1>
+        <p id="updated" class="muted">Cargando…</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button id="theme" class="ghost small icon" title="Cambiar entre modo oscuro y claro" aria-label="Cambiar tema">☀️</button>
+      <button id="refresh" class="ghost small" title="Volver a buscar en los portales oficiales">↻ Actualizar</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="list" aria-selected="true">🏡 Casas</button>
+    <button role="tab" data-view="alerts">🔔 Alertas <span id="alertCount" class="pill hot"></span></button>
+    <button role="tab" data-view="map">🗺️ Mapa</button>
+    <button role="tab" data-view="favs">★ Guardadas <span id="favCount" class="pill"></span></button>
+    <button role="tab" data-view="portals">🔗 Más portales</button>
+  </nav>
+
+  <section id="filters" class="filters">
+    <div class="searchrow">
+      <input id="q" type="search" placeholder="Pueblo, provincia o palabra (p. ej. «casale», «Asturias»)" autocomplete="off">
+      <button id="toggleFilters" class="ghost small" aria-expanded="false">⚙︎ Filtros <span id="activeFilters" class="pill"></span></button>
+    </div>
+    <div class="row">
+      <button id="favOnly" class="zonebtn" aria-pressed="false">⭐ Mis zonas</button>
+      <div class="seg" id="country">
+        <button data-c="ALL" class="on">Todas</button>
+        <button data-c="ES">🇪🇸 España</button>
+        <button data-c="IT">🇮🇹 Italia</button>
+      </div>
+      <label class="sortlabel">Ordenar
+        <select id="sort">
+          <option value="score">⭐ Mejor oportunidad</option>
+          <option value="price">€ Más baratas</option>
+          <option value="date">⏰ Subasta más próxima</option>
+          <option value="new">🆕 Más nuevas</option>
+          <option value="pop">🏘️ Pueblo más pequeño</option>
+          <option value="iso">🌄 Más aislada</option>
+        </select>
+      </label>
+    </div>
+    <div id="morefilters" class="morefilters" hidden>
+      <label class="range">
+        <span>💶 Precio máximo <b id="priceVal"></b></span>
+        <input id="price" type="range" min="2000" max="60000" step="1000" value="30000">
+      </label>
+      <label class="range">
+        <span>🏘️ Habitantes del pueblo, máximo <b id="popVal"></b></span>
+        <input id="pop" type="range" min="0" max="7" step="1" value="4">
+      </label>
+      <label class="range">
+        <span>🌄 Aislamiento <b id="isoVal"></b></span>
+        <input id="iso" type="range" min="0" max="4" step="1" value="0">
+        <small class="muted">0 = en el pueblo · 50 = campo · 100 = totalmente aislada. Solo cuenta en casas con la ubicación ya analizada.</small>
+      </label>
+      <div>
+        <span class="label">⭐ Mis zonas favoritas <small class="muted">(salen primero y te avisan cuando hay casas nuevas)</small></span>
+        <div class="chips" id="favZones"></div>
+      </div>
+      <div>
+        <span class="label">Tipo de edificación</span>
+        <div class="chips" id="kinds"></div>
+      </div>
+      <div class="checks">
+        <label><input id="hideStop" type="checkbox" checked> Ocultar «🔴 No comprar todavía» (cuotas, usufructos…)</label>
+        <label><input id="hideHigh" type="checkbox"> Ocultar también «🟠 Alto riesgo»</label>
+        <label><input id="rural" type="checkbox"> Solo rurales / rústicas</label>
+        <label><input id="unknownPop" type="checkbox" checked> Incluir pueblos sin dato de población</label>
+        <label><input id="onlyNew" type="checkbox"> Solo nuevas desde mi última visita</label>
+        <label><input id="favFirst" type="checkbox" checked> Mostrar primero las de mis zonas</label>
+      </div>
+      <button id="resetFilters" class="link">Restablecer filtros</button>
+    </div>
+  </section>
+
+  <main>
+    <div id="view-list" class="view">
+      <div class="countrow"><p id="count" class="muted"></p><button id="batchGeo" class="link">📍 Analizar ubicación de las 10 primeras</button></div>
+      <ul id="list" class="cards"></ul>
+      <button id="more" class="ghost wide" hidden>Ver más casas</button>
+    </div>
+    <div id="view-alerts" class="view" hidden>
+      <div class="alert-head">
+        <div>
+          <h2>🔔 Alertas prioritarias</h2>
+          <p class="muted small" id="alertZones"></p>
+        </div>
+        <div class="alert-actions">
+          <button id="notifyBtn" class="ghost small">🔔 Activar avisos</button>
+          <button id="markSeen" class="ghost small">✓ Marcar como vistas</button>
+        </div>
+      </div>
+      <p class="muted small">Tu Mac busca solo cada día a las 9:00 y a las 21:00 y te manda una notificación si aparecen casas nuevas en tus zonas (hasta <b id="alertMax"></b>, sin las de «🔴 No comprar todavía»).</p>
+      <h3 class="subhead">Nuevas</h3>
+      <ul id="alertsNew" class="cards"></ul>
+      <h3 class="subhead">Todas las casas en mis zonas <span id="zoneCount" class="muted"></span></h3>
+      <ul id="alertsZone" class="cards"></ul>
+      <button id="moreZone" class="ghost wide" hidden>Ver más</button>
+    </div>
+    <div id="view-map" class="view" hidden>
+      <p class="muted">Italia publica coordenadas; las de España aparecen cuando abres su ficha (ubicación aproximada del pueblo).</p>
+      <div id="map"></div>
+    </div>
+    <div id="view-favs" class="view" hidden>
+      <ul id="favs" class="cards"></ul>
+    </div>
+    <div id="view-portals" class="view" hidden></div>
+  </main>
+
+  <dialog id="detail" aria-label="Ficha de la casa">
+    <div class="sheet">
+      <header class="sheet-head">
+        <button class="ghost small" id="closeDetail" aria-label="Cerrar">← Volver</button>
+        <div class="sheet-title"></div>
+        <button class="fav big" id="detailFav" aria-label="Guardar">☆</button>
+      </header>
+      <nav class="sheet-nav" id="sheetNav"></nav>
+      <div class="sheet-body" id="sheetBody"></div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="portals.js"></script>
+  <script src="geo.js"></script>
+  <script src="app.js"></script>
+  <script src="detail.js"></script>
+</body>
+</html>
