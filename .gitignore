@@ -12,3 +12,6 @@ data/ntfy.json
 
 # Datos privados del Mac
 PRIVADO.md
+data/pvp_cache.json
+data/translations.json
+data/*.log
