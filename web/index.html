@@ -113,6 +113,7 @@
           <button id="markSeen" class="ghost small">✓ Marcar como vistas</button>
         </div>
       </div>
+      <div id="ntfyCard" class="ntfy-card" hidden></div>
       <p class="muted small">Tu Mac busca solo cada día a las 9:00 y a las 21:00 y te manda una notificación si aparecen casas nuevas en tus zonas (hasta <b id="alertMax"></b>, sin las de «🔴 No comprar todavía»).</p>
       <h3 class="subhead">Nuevas</h3>
       <ul id="alertsNew" class="cards"></ul>
@@ -125,6 +126,10 @@
       <div id="map"></div>
     </div>
     <div id="view-favs" class="view" hidden>
+      <div class="fav-head">
+        <p class="muted small">Tus guardadas viven en este dispositivo. Compártelas con un enlace (WhatsApp, mensaje…).</p>
+        <button id="shareFavs" class="btn primary">📤 Compartir</button>
+      </div>
       <ul id="favs" class="cards"></ul>
     </div>
     <div id="view-portals" class="view" hidden></div>
@@ -145,9 +150,11 @@
   <div id="toast" class="toast" hidden></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script src="portals.js"></script>
   <script src="geo.js"></script>
   <script src="app.js"></script>
   <script src="detail.js"></script>
+  <script src="share.js"></script>
 </body>
 </html>

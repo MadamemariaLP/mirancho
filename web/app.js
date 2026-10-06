@@ -231,8 +231,30 @@ function renderAlerts() {
   $("#zoneCount").textContent = `(${inZone.length})`;
   $("#alertsZone").replaceChildren(...inZone.slice(0, zoneShown).map(card));
   $("#moreZone").hidden = inZone.length <= zoneShown;
+  if (serverMode) renderNtfyCard();
   const perm = "Notification" in window ? Notification.permission : "denied";
   $("#notifyBtn").hidden = perm === "granted" || perm === "denied";
+}
+
+// Solo en el Mac: el canal de ntfy es privado y no se publica
+async function renderNtfyCard() {
+  const card = $("#ntfyCard");
+  if (card.dataset.done) return;
+  const c = await fetch("/api/ntfy").then((r) => r.json()).catch(() => ({}));
+  if (!c.topic) return;
+  card.dataset.done = "1"; card.hidden = false;
+  card.innerHTML = `
+    <b>📱 Alertas en el iPhone (tú y tu marido)</b>
+    <ol class="steps small">
+      <li>Instala la app gratuita <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener">ntfy ↗</a>.</li>
+      <li>Pulsa <b>+</b>, escribe este canal y suscríbete (deja el servidor por defecto, ntfy.sh):</li>
+    </ol>
+    <div class="topic-row"><code id="topic">${esc(c.topic)}</code><button id="copyTopic" class="btn ghost">📋 Copiar</button></div>
+    <div class="qr-row"><div id="qr"></div><p class="muted small">O escanea este código con la cámara del iPhone para pasarte el canal.<br>Es privado: no lo compartas con nadie más.</p></div>
+    <button id="testNtfy" class="btn ghost">Enviar una alerta de prueba</button>`;
+  $("#copyTopic").onclick = async () => { try { await navigator.clipboard.writeText(c.topic); toast("Canal copiado"); } catch { toast(c.topic); } };
+  $("#testNtfy").onclick = async () => { await fetch("/api/ntfy-test", { method: "POST" }); toast("Alerta de prueba enviada"); };
+  if (window.QRCode) new QRCode($("#qr"), { text: `${c.server}/${c.topic}`, width: 120, height: 120, colorDark: "#0b0f14", colorLight: "#ffffff" });
 }
 
 async function loadPrefs() {
@@ -318,6 +340,7 @@ async function load() {
     + (d.errors?.length ? " · ⚠ una fuente falló" : "") + (serverMode ? "" : " · se actualiza a las 9 y a las 21");
   renderList();
   renderFavCount();
+  await maybeImport();
   const deep = new URLSearchParams(location.hash.slice(1)).get("casa");
   if (deep && byId[deep]) openDetail(byId[deep]);
 }
@@ -390,7 +413,9 @@ $("#notifyBtn").onclick = async () => {
 $("#theme").onclick = () => setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 $("#refresh").onclick = refresh;
 $("#batchGeo").onclick = batchGeo;
+$("#shareFavs").onclick = () => openShare();
 window.addEventListener("hashchange", () => {
+  if (location.hash.includes("import=")) { maybeImport(); return; }
   const id = new URLSearchParams(location.hash.slice(1)).get("casa");
   if (id && byId[id] && currentX?.id !== id) openDetail(byId[id]);
 });

@@ -68,6 +68,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if u.path == "/api/status":
             ok, why = ai.available()
             return self._json({**state, "ai": ok, "aiWhy": why})
+        if u.path == "/api/ntfy":
+            f = ROOT / "data" / "ntfy.json"
+            return self._json(json.loads(f.read_text()) if f.exists() else {})
         if u.path == "/api/prefs":
             f = ROOT / "web" / "data" / "prefs.json"
             p = json.loads(f.read_text()) if f.exists() else {}
@@ -111,6 +114,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not state["running"]:
                 threading.Thread(target=run_collector, daemon=True).start()
             return self._json({"started": True})
+        if self.path == "/api/ntfy-test":
+            from collector import PUBLIC_URL, ntfy
+            ntfy("🏡 MiRancho: prueba", "Si ves esto, las alertas al móvil funcionan.", click=PUBLIC_URL, priority="default", tags="white_check_mark")
+            return self._json({"ok": True})
         if self.path == "/api/prefs":
             n = int(self.headers.get("Content-Length", 0))
             new = json.loads(self.rfile.read(n) or b"{}")

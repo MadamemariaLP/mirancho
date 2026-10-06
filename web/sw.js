@@ -1,6 +1,6 @@
 // App shell en caché; los datos van primero a red y, sin conexión, a la última copia.
-const CACHE = "mirancho-v2";
-const SHELL = ["./", "index.html", "styles.css", "geo.js", "app.js", "detail.js", "portals.js", "icon.svg", "apple-touch-icon.png", "icon-192.png", "manifest.webmanifest",
+const CACHE = "mirancho-v3";
+const SHELL = ["./", "index.html", "styles.css", "geo.js", "app.js", "detail.js", "share.js", "portals.js", "icon.svg", "apple-touch-icon.png", "icon-192.png", "manifest.webmanifest",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"];
 

@@ -8,3 +8,4 @@ data/*.log
 data/boe_cache.json
 data/geo_cache.json
 data/contacts.json
+data/ntfy.json

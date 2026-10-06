@@ -351,6 +351,23 @@ def prefs():
     return json.loads(PREFS.read_text()) if PREFS.exists() else {"favRegions": [], "alertMaxPrice": 30000}
 
 
+PUBLIC_URL = "https://madamemarialp.github.io/mirancho/"
+NTFY = ROOT / "data" / "ntfy.json"  # canal privado: no se publica
+
+
+def ntfy(title, message, click=None, priority="high", tags="house"):
+    """Notificación al móvil con la app ntfy (tú y quien se suscriba al canal)."""
+    if not NTFY.exists():
+        return
+    cfg = json.loads(NTFY.read_text())
+    import subprocess
+    cmd = ["curl", "-sS", "-m", "20", "-H", f"Title: {title}", "-H", f"Priority: {priority}", "-H", f"Tags: {tags}",
+           "-d", message, f"{cfg['server']}/{cfg['topic']}"]
+    if click:
+        cmd[1:1] = ["-H", f"Click: {click}"]
+    subprocess.run(cmd, capture_output=True, timeout=30, check=False)
+
+
 def alerts(listings, new_ids):
     """Casas nuevas en las zonas favoritas → historial + notificación del Mac."""
     p = prefs()
@@ -376,6 +393,17 @@ def alerts(listings, new_ids):
             subprocess.run(["osascript", "-e", script], timeout=10, check=False)
         except Exception:  # noqa: BLE001
             pass
+    if hits and p.get("notify", True):
+        try:
+            for x in sorted(hits, key=lambda x: x["price"])[:5]:
+                ntfy(f"🏡 {x['town']} ({x['region']}) · {x['price']:,.0f} €".replace(",", "."),
+                     f"{x['kindLabel']} · {x['title'][:120]}",
+                     click=f"{PUBLIC_URL}#casa={urllib.parse.quote(x['id'])}")
+            if len(hits) > 5:
+                ntfy(f"🔔 +{len(hits) - 5} casas nuevas más en tus zonas", "Ábrelas en la pestaña Alertas de MiRancho.",
+                     click=PUBLIC_URL, priority="default")
+        except Exception as e:  # noqa: BLE001
+            log(f"  ntfy: {e}")
     log(f"Alertas: {len(hits)} casas nuevas en {', '.join(sorted(fav)) or 'ninguna zona'}")
 
 
