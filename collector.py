@@ -142,13 +142,87 @@ def collect_it(max_price, pop):
         log(f"  IT página {page + 1}/{d['totalPages']} ({len(out)} lotes)")
         page += 1
         if page >= d["totalPages"]:
-            return out
+            return enrich_it(out)
         time.sleep(0.5)
+
+
+PVP_DETAIL_API = "https://pvp.giustizia.it/ve-3f723b85-986a1b71/ve-ms/vendite/{}/restricted"
+PVP_FILES = "https://resource-pvp.giustizia.it"
+PVP_CACHE = ROOT / "data" / "pvp_cache.json"
+IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def pvp_detail(vid):
+    b = json.loads(http(PVP_DETAIL_API.format(vid)))["body"]
+    allegati = list(b.get("allegati") or [])
+    surface = floor = rooms = None
+    for be in b.get("beni") or []:
+        allegati += be.get("allegati") or []
+        surface = surface or be.get("superficie")
+        floor = floor or be.get("piano")
+        rooms = rooms or be.get("numeroVani")
+    photos, docs, seen = [], [], set()
+    for a in allegati:
+        link, name = a.get("linkAllegato"), a.get("nomeFile") or "Documento"
+        if not link or link in seen:
+            continue
+        seen.add(link)
+        url = PVP_FILES + urllib.parse.quote(link, safe="/?=&")
+        if name.lower().endswith(IMG_EXT) or (a.get("descrizione") or "").upper() == "IMMAGINE BENE":
+            photos.append(url)
+        else:
+            docs.append({"name": name, "url": url})
+    # custodio: solo teléfono y correo profesionales (sin nombres ni códigos fiscales)
+    custode = next(({"phone": s.get("telefono"), "email": s.get("email")} for s in b.get("soggetti") or []
+                    if s.get("ruolo") == "CUSTODE" and (s.get("telefono") or s.get("email"))), None)
+    return {"photos": photos[:12], "docs": docs[:12], "surface": surface, "floor": floor, "rooms": rooms,
+            "offerDeadline": f"{b.get('dataTermPresOff') or ''} {b.get('oraTermPresOff') or ''}".strip() or None,
+            "saleMode": b.get("descModVendita"), "custode": custode}
+
+
+def enrich_it(listings):
+    cache = json.loads(PVP_CACHE.read_text()) if PVP_CACHE.exists() else {}
+    todo = [x["id"][3:] for x in listings if x["id"][3:] not in cache]
+    log(f"  IT fichas nuevas a descargar: {len(todo)} (en caché: {len(listings) - len(todo)})")
+
+    def fetch(vid):
+        try:
+            return vid, pvp_detail(vid)
+        except Exception as e:  # noqa: BLE001
+            log(f"  error ficha {vid}: {e}")
+            return vid, None
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        for n, (vid, det) in enumerate(ex.map(fetch, todo), 1):
+            if det:
+                cache[vid] = det
+            if n % 200 == 0:
+                log(f"  IT {n}/{len(todo)} fichas")
+                PVP_CACHE.write_text(json.dumps(cache, ensure_ascii=False))
+    ids = {x["id"][3:] for x in listings}
+    cache = {k: v for k, v in cache.items() if k in ids}
+    PVP_CACHE.write_text(json.dumps(cache, ensure_ascii=False))
+    for x in listings:
+        d = cache.get(x["id"][3:])
+        if not d:
+            continue
+        x.update({k: d[k] for k in ("photos", "docs", "floor", "rooms", "offerDeadline", "saleMode", "custode")})
+        x["photoSource"] = "Tribunal" if d["photos"] else None
+        if d.get("surface") and not x.get("m2"):
+            m = re.search(r"[\d.,]+", d["surface"])
+            if m:
+                try:
+                    v = float(m.group(0).replace(".", "").replace(",", "."))
+                    x["surfaceOfficial"] = v
+                except ValueError:
+                    pass
+    return listings
 
 
 # ------------------------------------------------------------ España (BOE)
 BOE = "https://subastas.boe.es/"
 SUBTYPES = {"501": "Vivienda", "507": "Finca rústica"}
+CATASTRO_FOTO = "https://ovc.catastro.meh.es/OVCServWeb/OVCWcfLibres/OVCFotoFachada.svc/RecuperarFotoFachadaGet?ReferenciaCatastral={}"
 HOUSE_WORDS = r"casa|vivienda|edificaci|construcci|cortijo|mas[ií]a|caser[ií]o|borda|pajar|corral|almac[eé]n|nave|caseta|planta baja"
 STATES = {"EJ": "Celebrándose", "PU": "Próxima apertura"}
 
@@ -207,6 +281,7 @@ def boe_detail(sid):
         "habitual": first.get("Vivienda habitual", ""),
         "possession": first.get("Situación posesoria", ""),
         "visitable": first.get("Visitable", ""),
+        "refcat": next((v for k, v in bienes if "catastral" in k.lower() and len(v) >= 14), None),
         "authority": g.get("Autoridad gestora", "") or g.get("Descripción", ""),
     }
 
@@ -222,7 +297,8 @@ def collect_es(max_price, pop):
                 found.setdefault(i, (st_name, sub_name))
             time.sleep(0.5)
 
-    todo = [i for i in found if i not in cache]
+    # fichas antiguas sin referencia catastral: se vuelven a leer una vez
+    todo = [i for i in found if i not in cache or "refcat" not in cache[i]]
     log(f"  ES fichas nuevas a descargar: {len(todo)} (en caché: {len(found) - len(todo)})")
 
     def fetch(sid):
@@ -275,6 +351,9 @@ def collect_es(max_price, pop):
             "habitual": f"Vivienda habitual: {d['habitual']}" if d["habitual"] else "",
             "authority": d["authority"],
             "image": None,
+            "refcat": d.get("refcat"),
+            "photos": [CATASTRO_FOTO.format(d["refcat"][:14])] if d.get("refcat") else [],
+            "photoSource": "Catastro (fachada)" if d.get("refcat") else None,
             "url": f"{BOE}detalleSubasta.php?idSub={sid}",
             "population": pop.get(norm(town)),
             "rural": sub_name == "Finca rústica" or is_rural(d["description"]),

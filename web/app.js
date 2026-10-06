@@ -17,6 +17,8 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
 };
+// Texto del anuncio en el idioma elegido (traducción automática de los italianos)
+const tr = (x, k) => (f.translate !== false && x[k + "_es"]) || x[k];
 const fold = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.hidden = false;
@@ -42,7 +44,7 @@ const tileUrl = () => "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const tileAttr = "© OpenStreetMap";
 
 const DEFAULTS = { country: "ALL", sort: "score", price: 30000, pop: 4, iso: 0, kinds: ["A", "B", "C", "D", "E", "?"],
-  hideStop: true, hideHigh: false, rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, hideNo: true, q: "" };
+  hideStop: true, hideHigh: false, rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, hideNo: true, onlyPhotos: false, translate: true, q: "" };
 const f = Object.assign({}, DEFAULTS, store.get("filters", {}));
 
 const isNew = (x) => lastVisit && x.firstSeen > lastVisit;
@@ -54,7 +56,7 @@ function syncControls() {
   $("#price").value = f.price;
   $("#pop").value = f.pop;
   $("#iso").value = f.iso;
-  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo"]) $("#" + id).checked = f[id];
+  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos", "translate"]) $("#" + id).checked = f[id];
   $("#favOnly").setAttribute("aria-pressed", String(f.favOnly));
   $("#favOnly").classList.toggle("on", f.favOnly);
   document.querySelectorAll("#country button").forEach((b) => b.classList.toggle("on", b.dataset.c === f.country));
@@ -63,7 +65,7 @@ function syncControls() {
   const p = POP_STEPS[f.pop];
   $("#popVal").textContent = p === Infinity ? "sin límite" : p.toLocaleString("es-ES");
   $("#isoVal").textContent = ISO_STEPS[f.iso][2];
-  const active = ["price", "pop", "iso", "hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo"]
+  const active = ["price", "pop", "iso", "hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos"]
     .filter((k) => f[k] !== DEFAULTS[k]).length + (f.kinds.length !== DEFAULTS.kinds.length ? 1 : 0);
   $("#activeFilters").textContent = active || "";
 }
@@ -82,6 +84,7 @@ function filtered() {
     if (f.hideHigh && x.verdict === "high") return false;
     if (!f.kinds.includes(x.kindCode)) return false;
     if (f.rural && !x.rural) return false;
+    if (f.onlyPhotos && !x.photos?.length) return false;
     if (f.onlyNew && !isNew(x)) return false;
     if (q && !x._text.includes(q)) return false;
     if (f.iso) {
@@ -115,7 +118,11 @@ function card(x) {
   const sc = fullScore(x, g);
   const pop = x.population ? `${x.population.toLocaleString("es-ES")} hab.` : "";
   const reasons = sc.why.slice(0, 3).map((r) => `<li class="${r.startsWith("+") ? "pro" : r.startsWith("−") ? "con" : ""}">${esc(r.replace(/^[+−·] /, ""))}</li>`).join("");
+  const cover = x.photos?.[0];
   li.innerHTML = `
+    ${cover ? `<div class="cover"><img src="${esc(cover)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.closest('.cover').remove()">
+      ${x.photos.length > 1 ? `<span class="cover-n">📷 ${x.photos.length}</span>` : ""}
+      ${x.photoSource === "Catastro (fachada)" ? `<span class="cover-src">Catastro</span>` : ""}</div>` : ""}
     <div class="card-top">
       <span class="verdict ${v.cls}">${v.icon} ${v.label}</span>
       ${isFavZone(x) ? `<span class="tag zone">⭐ ${esc(x.region)}</span>` : ""}
@@ -125,7 +132,7 @@ function card(x) {
     <div class="card-main">
       <div>
         <p class="place">${x.country === "ES" ? "🇪🇸" : "🇮🇹"} <b>${esc(x.town || "—")}</b> · ${esc(x.province)} ${pop ? `· ${pop}` : ""}</p>
-        <h3>${esc(x.title)}</h3>
+        <h3>${esc(tr(x, "title"))}</h3>
         <p class="kind">${KINDS[x.kindCode]}${x.m2 ? ` · ${x.m2} m²` : ""}${x.land ? ` · terreno ${Math.round(x.land).toLocaleString("es-ES")} m²` : ""}</p>
       </div>
       ${scoreRing(sc.total)}
@@ -211,7 +218,7 @@ function show(view) {
 
 function onFilter() {
   f.q = $("#q").value; f.sort = $("#sort").value; f.price = +$("#price").value; f.pop = +$("#pop").value; f.iso = +$("#iso").value;
-  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo"]) f[id] = $("#" + id).checked;
+  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos", "translate"]) f[id] = $("#" + id).checked;
   store.set("filters", f);
   shown = PAGE;
   syncControls();
@@ -342,7 +349,7 @@ async function load() {
   serverMode = await fetch("/api/status").then((r) => r.ok && (r.headers.get("content-type") || "").includes("json")).catch(() => false);
   $("#refresh").hidden = !serverMode;
   const d = await fetch("data/listings.json", { cache: "no-cache" }).then((r) => r.json());
-  all = d.listings.map((x) => ({ ...x, _text: fold([x.title, x.description, x.town, x.province, x.address].join(" ")) }));
+  all = d.listings.map((x) => ({ ...x, _text: fold([x.title, x.description, x.title_es, x.description_es, x.town, x.province, x.address].join(" ")) }));
   byId = Object.fromEntries(all.map((x) => [x.id, x]));
   await Promise.all([loadGeoIndex(), loadPrefs(), loadAlerts()]);
   const es = all.filter((x) => x.country === "ES").length;

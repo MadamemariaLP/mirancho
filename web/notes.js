@@ -71,7 +71,15 @@ function zonedDate(date, time, tz) {
   return new Date(guess.getTime() - (asTz - guess.getTime()));
 }
 
+// Plazo de ofertas en Italia («dd/mm/aaaa hh:mm», hora de Roma)
+function offerWhen(x) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})\s*(\d{1,2}:\d{2})?/.exec(x.offerDeadline || "");
+  return m ? zonedDate(`${m[3]}-${m[2]}-${m[1]}`, m[4] || "12:00", "Europe/Rome") : null;
+}
+
 function auctionWhen(x) {
+  const off = x.country === "IT" ? offerWhen(x) : null;
+  if (off) return off;
   if (x.country === "ES" && x.endISO) return new Date(x.endISO);
   if (x.date) return zonedDate(x.date, x.time || (x.country === "ES" ? "18:00" : "09:00"), x.country === "IT" ? "Europe/Rome" : "Europe/Madrid");
   return null;
@@ -87,10 +95,13 @@ function calendarInfo(x) {
   if (!w) return `<p class="muted small">Este anuncio no indica fecha.</p>`;
   if (w < new Date()) return `<p class="muted small">La fecha ya pasó (${w.toLocaleDateString("es-ES", { dateStyle: "long" })}).</p>`;
   const when = w.toLocaleString("es-ES", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-  const tip = x.country === "IT"
+  const isOffer = x.country === "IT" && offerWhen(x);
+  const tip = isOffer
+    ? `Es el <b>plazo para presentar la oferta</b> (la venta es el ${x.date ? new Date(x.date).toLocaleDateString("es-ES", { day: "numeric", month: "long" }) : "día indicado"}${x.time ? ` a las ${esc(x.time)}` : ""}). Te avisaremos 3 días, 1 día y 3 horas antes.`
+    : x.country === "IT"
     ? "En Italia las ofertas se presentan normalmente <b>hasta las 12:00 del día anterior</b> a la venta (revisa el aviso). Te avisaremos 3 días y 1 día antes."
     : "Las pujas en el BOE se hacen online <b>hasta el cierre</b> y necesitas el certificado digital y el depósito. Te avisaremos 3 días, 1 día y 2 horas antes.";
-  return `<p class="small">${x.country === "ES" ? "Cierre de la subasta" : "Venta"}: <b>${when}</b> (hora de tu móvil) · faltan <b>${daysLeft(x)} días</b></p>
+  return `<p class="small">${x.country === "ES" ? "Cierre de la subasta" : isOffer ? "Plazo de ofertas" : "Venta"}: <b>${when}</b> (hora de tu móvil) · faltan <b>${daysLeft(x)} días</b></p>
     <p class="muted small">${tip}</p>
     <div class="actions">
       <button id="icsBtn" class="btn primary">📅 Añadir a mi calendario</button>
@@ -103,12 +114,12 @@ const icsText = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\
 
 function calTexts(x) {
   const n = noteOf(x.id);
-  const title = `${x.country === "ES" ? "⏰ Cierre subasta" : "⏰ Venta"}: ${x.town} · ${eur(x.price)}`;
+  const title = `${x.country === "ES" ? "⏰ Cierre subasta" : offerWhen(x) ? "⏰ Plazo oferta" : "⏰ Venta"}: ${x.town} · ${eur(x.price)}`;
   const desc = [
-    `${x.title}`,
+    `${tr(x, "title")}`,
     `Precio: ${eur(x.price)}${x.minOffer ? ` (oferta mínima ${eur(x.minOffer)})` : ""}`,
     n?.maxBid ? `Mi puja máxima: ${eur(n.maxBid)}` : "",
-    x.country === "IT" ? "Ofertas normalmente hasta las 12:00 del día anterior (revisa el aviso)." : "Puja online en el Portal de Subastas del BOE antes del cierre.",
+    x.country === "IT" ? (offerWhen(x) ? `Plazo de ofertas: ${x.offerDeadline}. Venta: ${x.date}${x.time ? " " + x.time : ""}.` : "Ofertas normalmente hasta las 12:00 del día anterior (revisa el aviso).") : "Puja online en el Portal de Subastas del BOE antes del cierre.",
     `Anuncio: ${x.url}`,
     `MiRancho: ${PUBLIC_URL}#casa=${encodeURIComponent(x.id)}`,
   ].filter(Boolean).join("\n");
@@ -119,7 +130,7 @@ function downloadICS(x) {
   const start = auctionWhen(x);
   const end = new Date(start.getTime() + 60 * 60000);
   const { title, desc, where } = calTexts(x);
-  const alarms = (x.country === "ES" ? ["-P3D", "-P1D", "-PT2H"] : ["-P3D", "-P1D"]).map((t) =>
+  const alarms = (x.country === "ES" ? ["-P3D", "-P1D", "-PT2H"] : offerWhen(x) ? ["-P3D", "-P1D", "-PT3H"] : ["-P3D", "-P1D"]).map((t) =>
     ["BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsText(title)}`, `TRIGGER:${t}`, "END:VALARM"].join("\r\n"));
   const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MiRancho//ES", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
     "BEGIN:VEVENT", `UID:${x.id}@mirancho`, `DTSTAMP:${icsDate(new Date())}`, `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(end)}`,

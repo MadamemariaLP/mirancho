@@ -70,7 +70,8 @@ function openDetail(x) {
     alertSeen.add(x.id); store.set("alertSeen", [...alertSeen]); renderAlertCount();
   }
   const dlg = $("#detail");
-  $(".sheet-title", dlg).innerHTML = `<b>${isFavZone(x) ? "⭐ " : ""}${esc(x.town || x.title)}</b><span>${eur(x.price)} · ${x.country === "ES" ? "🇪🇸" : "🇮🇹"} ${esc(x.province)}</span>`;
+  dlg.dataset.orig = "";
+  $(".sheet-title", dlg).innerHTML = `<b>${isFavZone(x) ? "⭐ " : ""}${esc(x.town || tr(x, "title"))}</b><span>${eur(x.price)} · ${x.country === "ES" ? "🇪🇸" : "🇮🇹"} ${esc(x.province)}</span>`;
   $("#detailFav").textContent = favs.has(x.id) ? "★" : "☆";
   $("#detailFav").onclick = () => { toggleFav(x.id); $("#detailFav").textContent = favs.has(x.id) ? "★" : "☆"; };
   $("#sheetNav").innerHTML = SECTIONS.map(([k, v]) => `<a href="#s-${k}" data-k="${k}">${v}</a>`).join("");
@@ -97,6 +98,17 @@ $("#detail").addEventListener("close", () => {
 
 const body = (k) => $(`#s-${k} .sec-body`);
 
+function bindDescToggle(x) {
+  const b = $("#descToggle");
+  if (!b) return;
+  let showEs = f.translate !== false;
+  b.onclick = () => {
+    showEs = !showEs;
+    $("#descText").textContent = showEs ? x.description_es : x.description;
+    b.textContent = showEs ? "🇮🇹 Ver el original en italiano" : "🇪🇸 Ver traducción al español";
+  };
+}
+
 function renderResumen() {
   const x = currentX;
   const ai = aiResult(x.id);
@@ -106,7 +118,14 @@ function renderResumen() {
   const flags = ai && !ai.error ? ai.legal.map((l) => ({ level: l.level, msg: l.issue, quote: l.evidence })) : x.flags;
   const bars = Object.entries(sc.parts).map(([k, n]) =>
     `<div class="bar"><span>${k}</span><div><i style="width:${n}%;background:${n >= 70 ? "var(--good)" : n >= 45 ? "var(--warn)" : "var(--bad)"}"></i></div><b>${n}</b></div>`).join("");
-  body("resumen").innerHTML = `
+  const gallery = x.photos?.length ? `
+    <div class="gallery">${x.photos.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto ${i + 1}" loading="${i ? "lazy" : "eager"}" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.remove()"></a>`).join("")}</div>
+    <p class="muted small">${x.photoSource === "Catastro (fachada)" ? "📷 Foto de fachada del Catastro (puede ser antigua o de la calle)." : `📷 ${x.photos.length} foto(s) del tribunal · toca para verlas en grande.`}</p>` : "";
+  const docs = x.docs?.length ? `
+    <h3>📄 Documentos oficiales</h3>
+    <ul class="docs">${x.docs.map((d) => `<li><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name)}</a></li>`).join("")}</ul>
+    <p class="muted small">La <b>perizia</b> es el informe del perito: estado, superficie, cargas, ocupación y fotos. Descárgala y súbela en «🔨 Reforma» para que la IA la analice.</p>` : "";
+  body("resumen").innerHTML = `${gallery}
     <div class="verdict-box ${v.cls}">
       <div class="vb-head">${v.icon} <b>${verdict === "stop" ? "NO COMPRAR TODAVÍA" : verdict === "high" ? "ALTO RIESGO" : v.label.toUpperCase()}</b></div>
       ${flags.length ? `<ul>${flags.map((fl) => `<li><b>${esc(fl.msg)}</b>${fl.quote ? `<q>${esc(fl.quote)}</q>` : ""}</li>`).join("")}</ul>`
@@ -128,12 +147,22 @@ function renderResumen() {
       ${x.appraisal ? `<dt>Tasación</dt><dd>${eur(x.appraisal)}</dd>` : ""}
       ${x.deposit ? `<dt>Depósito para pujar</dt><dd>${eur(x.deposit)}</dd>` : ""}
       <dt>${x.country === "ES" ? "Fin de la subasta" : "Fecha de venta"}</dt><dd>${x.date ? new Date(x.date).toLocaleDateString("es-ES", { dateStyle: "long" }) : "—"} ${x.status ? `· ${esc(x.status)}` : ""}</dd>
+      ${x.offerDeadline ? `<dt>Plazo de ofertas</dt><dd><b>${esc(x.offerDeadline)}</b></dd>` : ""}
+      ${x.saleMode ? `<dt>Modalidad</dt><dd>${esc(x.saleMode)}</dd>` : ""}
+      ${x.surfaceOfficial ? `<dt>Superficie</dt><dd>${x.surfaceOfficial} m²${x.floor ? ` · planta ${esc(x.floor)}` : ""}${x.rooms ? ` · ${x.rooms} estancias` : ""}</dd>` : ""}
+      ${x.refcat ? `<dt>Ref. catastral</dt><dd><a href="https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?rc1=${esc(x.refcat.slice(0, 7))}&rc2=${esc(x.refcat.slice(7, 14))}" target="_blank" rel="noopener">${esc(x.refcat)} ↗</a></dd>` : ""}
       ${x.address ? `<dt>Dirección</dt><dd>${esc(x.address)}</dd>` : ""}
       ${x.occupancy ? `<dt>Ocupación</dt><dd>${esc(x.occupancy.replaceAll("_", " ").toLowerCase())}</dd>` : ""}
       <dt>Gestiona</dt><dd>${esc(x.authority || x.source)}</dd>
     </dl>
-    <details><summary>Descripción oficial completa</summary><p class="desc">${esc(x.description || "Sin descripción")}</p></details>
+    ${docs}
+    <details ${x.description_es ? "open" : ""}><summary>Descripción oficial completa${x.description_es && f.translate !== false ? " (traducida)" : ""}</summary>
+      <p class="desc" id="descText">${esc(tr(x, "description") || "Sin descripción")}</p>
+      ${x.description_es ? `<button class="link" id="descToggle">${f.translate !== false ? "🇮🇹 Ver el original en italiano" : "🇪🇸 Ver traducción al español"}</button>
+      <p class="muted small">Traducción automática hecha en tu Mac; ante la duda, manda el original.</p>` : ""}
+    </details>
     <a class="btn primary wide" href="${esc(x.url)}" target="_blank" rel="noopener">Ver el anuncio en ${esc(x.source)} ↗</a>`;
+  bindDescToggle(x);
 }
 
 async function loadGeo(x) {
@@ -246,6 +275,7 @@ function renderReforma() {
     <div class="ai-box" ${serverMode ? "" : "hidden"}>
       <h3>🤖 Estimación con IA</h3>
       <p class="small">Sube <b>fotos, vídeo (capturas), plano, el PDF del anuncio o la perizia</b>. La IA revisa tejado, humedad, grietas, ventanas, fachada, estructura, instalaciones, cocina, baños, aislamiento y calefacción, estima la reforma por partidas y busca trampas legales.</p>
+      ${x.docs?.length ? `<p class="small">📄 Este anuncio tiene documentos oficiales: ${x.docs.slice(0, 4).map((d) => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name)}</a>`).join(" · ")}. Descárgalos y súbelos aquí.</p>` : ""}
       <label class="drop" id="drop">
         <input type="file" id="aiFiles" accept="image/*,application/pdf" multiple hidden>
         <span>📷 Toca para elegir archivos o arrástralos aquí</span>
@@ -398,7 +428,7 @@ function renderValor() {
     <div class="calc">
       <label>Lo que pagas (puja/precio)<input id="cPrice" type="number" inputmode="numeric" value="${saved.price ?? (x.minOffer || x.price)}"></label>
       <label>Reforma estimada<input id="cReform" type="number" inputmode="numeric" value="${saved.reform ?? reformDefault}" placeholder="€"></label>
-      <label>Superficie vivienda (m²)<input id="cM2" type="number" inputmode="numeric" value="${saved.m2 ?? (x.m2 || "")}" placeholder="m²"></label>
+      <label>Superficie vivienda (m²)<input id="cM2" type="number" inputmode="numeric" value="${saved.m2 ?? (x.m2 || x.surfaceOfficial || "")}" placeholder="m²"></label>
       <label>€/m² reformada en la zona<input id="cEurM2" type="number" inputmode="numeric" value="${saved.eurm2 ?? store.get(zoneKey, "")}" placeholder="p. ej. 900"></label>
     </div>
     <div id="cOut"></div>`;
@@ -486,7 +516,13 @@ function renderContacto() {
         <li>Pulsa <b>«Prenota visita»</b> (vía oficial, gratuita y obligatoria) y pega el mensaje.</li>
         <li>Si quieres, escribe también al <b>custode</b> que figura en el aviso de venta.</li>
       </ol>
-      <a class="btn primary" href="${esc(x.url)}" target="_blank" rel="noopener">Abrir la ficha para «Prenota visita» ↗</a>`
+      <a class="btn primary" href="${esc(x.url)}" target="_blank" rel="noopener">Abrir la ficha para «Prenota visita» ↗</a>
+      ${x.custode ? `<b>📮 Custodio (organiza las visitas)</b>
+      <div class="actions">
+        ${x.custode.phone ? `<a class="btn ghost" href="tel:${esc(String(x.custode.phone).replace(/\s/g, ""))}">📞 ${esc(x.custode.phone)}</a>` : ""}
+        ${x.custode.email ? `<button class="btn ghost" id="copyEmail">📋 ${esc(x.custode.email)}</button>` : ""}
+      </div>
+      <p class="muted small">«Abrir en el correo» y «Gmail» ya lo ponen como destinatario.</p>` : ""}`
       : loading("Buscando el contacto de la autoridad gestora en el BOE…")}</div>
     <div class="seg langs">${[["es", "🇪🇸 Español"], ["it", "🇮🇹 Italiano"], ["fr", "🇫🇷 Français"], ["en", "🇬🇧 English"]]
       .map(([k, v]) => `<button data-l="${k}" class="${k === lang ? "on" : ""}">${v}</button>`).join("")}</div>
@@ -503,7 +539,7 @@ function renderContacto() {
     </div>
     <p class="muted small">«Abrir en el correo» usa la app de correo predeterminada del dispositivo; «Gmail» abre Gmail con la cuenta que tengas iniciada. Comprueba el remitente antes de enviar. La app no envía nada por su cuenta.</p>`;
   let cur = lang;
-  let to = "";
+  let to = x.country === "IT" ? (x.custode?.email || "") : "";
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const gmailHref = () => {
     const subj = MSG[cur].subj + " – " + x.id.replace(/^(es|it)-/, ""), body = $("#msg").value;
@@ -538,6 +574,10 @@ function renderContacto() {
       $("#contactCard").innerHTML = `<p class="small">No se pudo cargar el contacto. Míralo en la pestaña <a href="${esc(x.url)}&ver=2" target="_blank" rel="noopener">«Autoridad gestora» del BOE ↗</a>.</p>`;
     });
   }
+  if (x.country === "IT" && x.custode?.email) setTimeout(() => {
+    const b = $("#copyEmail");
+    if (b) b.onclick = async () => { try { await navigator.clipboard.writeText(x.custode.email); toast("Correo copiado"); } catch { toast(x.custode.email); } };
+  });
   const build = () => {
     const d = {
       ref: x.id.replace(/^(es|it)-/, x.country === "IT" ? "n. " : ""), town: x.town, province: x.province,
