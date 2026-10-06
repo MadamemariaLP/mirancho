@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-from analysis import enrich
+from analysis import enrich, is_home
 from regions import region
 
 ROOT = Path(__file__).resolve().parent
@@ -500,7 +500,7 @@ def main():
         pops = {c: load_pop(ROOT / "data" / f"pop_{c.lower()}.csv") for c in ("ES", "IT")}
         for x in d["listings"]:
             x["population"] = pops[x["country"]].get(norm(x["town"]))
-        d["listings"] = [add_region(enrich(x)) for x in d["listings"] if (x.get("price") or 0) >= 500]
+        d["listings"] = [add_region(enrich(x)) for x in d["listings"] if (x.get("price") or 0) >= 500 and is_home(x)]
         for x in d["listings"]:
             for k in ("title", "description", "address"):
                 x[k] = redact(x.get(k))
@@ -526,7 +526,7 @@ def main():
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     for x in listings:
         x["firstSeen"] = seen_before.get(x["id"]) or now
-    listings = [add_region(enrich(x)) for x in listings if (x.get("price") or 0) >= 500]
+    listings = [add_region(enrich(x)) for x in listings if (x.get("price") or 0) >= 500 and is_home(x)]
     listings.sort(key=lambda x: x["price"] or 0)
     for x in listings:
         for k in ("title", "description", "address"):

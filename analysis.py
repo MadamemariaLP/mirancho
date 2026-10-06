@@ -71,6 +71,36 @@ def surface_m2(text):
 HOUSE_RX = r"appartament|abitazion|\bcasa\b|vivienda|villa|alloggio|fabbricat|edificio|\bpiso\b|casale|cascina|casolare|chalet|unifamiliar|adosad"
 
 
+# --- ¿Es una vivienda? Se descartan garajes, plazas, trasteros, locales, terrenos... ---
+DWELL_RX = re.compile(r"abitaz|abitativ|appartam|appart\.|alloggi|villett|villin|\bvill[ae]\b|\bcas[ae]\b|residenzial|casale|"
+                      r"casolare|masseri|trull|dammus|baita|cascina|mansard|attico|monolocal|bilocal|trilocal|quadrilocal|"
+                      r"\bcucina|soggiorno|camer[ae] da letto|terratetto|corte colonica|vivienda|\bpiso\b|chalet|unifamiliar|"
+                      r"adosad|cortijo|mas[ií]a|caser[ií]o|\bduplex", re.I)
+BUILD_RX = re.compile(r"fabbricat|immobil|unit[aà]|edifici|rustico|palazzin|porzion|compendio|\bvan[oi]\b|stabile", re.I)
+NOUSE_RX = re.compile(r"\bbox\b|garage|autorimess|posto auto|posti auto|cantin[ae]\b|magazzin|deposit[oi]\b|negozi|bottega|"
+                      r"\blocal[ei]\b|uffic[iy]|laborator|capannon|opificio|terren[oi]|appezzament|lastrico|tettoi|stall[ae]\b|"
+                      r"rimess[ae]|soffitt|sottotetto|area urbana|area edificabile|fondaco|ripostigl|posto barca|zootecn|"
+                      r"garaje|trastero|aparcamiento|\bnave\b|local comercial|\bsolar\b|oficina", re.I)
+CATASTO_RX = re.compile(r"\bcat(?:egoria|\.)?\s*([A-F])\s*/?\s*\d", re.I)
+
+
+def is_home(x):
+    """False si el anuncio es claramente otra cosa (garaje, trastero, local, terreno...)."""
+    title = x.get("title") or ""
+    full = f"{title} {x.get('description') or ''}"
+    if DWELL_RX.search(full[:600]):
+        return True
+    cats = {c.upper() for c in CATASTO_RX.findall(full)}
+    if "A" in cats:  # categoría catastral de vivienda
+        return True
+    m = NOUSE_RX.search(title)
+    if m:
+        b = BUILD_RX.search(title)
+        if not b or m.start() < b.start():
+            return False
+    return not (cats and not cats & {"F"})  # solo C/D/E: garajes, almacenes, naves
+
+
 def partial_share(t):
     """Busca fracciones de propiedad menores que el total: 1/2, 50/100, 33%..."""
     for m in re.finditer(r"(\d{1,3})\s*/\s*(\d{1,4})", t):
