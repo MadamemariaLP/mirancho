@@ -69,7 +69,7 @@ Al tocar una casa se abre su ficha:
 | Subastas BOE (subastas.boe.es) | Viviendas y fincas rústicas con casa: subastas judiciales, notariales, de Hacienda o de la Seguridad Social |
 | Portale Vendite Pubbliche (pvp.giustizia.it) | Aste giudiziarie de inmuebles residenciales |
 
-Solo se guardan **viviendas**: `analysis.is_home()` descarta garajes, plazas de parking, trasteros, almacenes, locales, oficinas, naves y terrenos sin casa.
+Solo se guardan **viviendas**: `analysis.is_home()` descarta garajes, plazas de parking, trasteros, almacenes, locales, oficinas, naves y terrenos sin casa, y también las ruinas y las edificaciones agrícolas.
 
 Idealista, Fotocasa, Immobiliare y Casa.it bloquean la lectura automática, por eso solo aparecen como enlaces.
 

@@ -85,6 +85,9 @@ NOUSE_RX = re.compile(r"\bbox\b|garage|autorimess|posto auto|posti auto|cantin[a
 CATASTO_RX = re.compile(r"\bcat(?:egoria|\.)?\s*([A-F])\s*/?\s*\d", re.I)
 
 
+NOT_WANTED = set("CDEF")  # ruinas, edificaciones agrícolas y lo que no es vivienda
+
+
 def is_home(x):
     """False si el anuncio es claramente otra cosa (garaje, trastero, local, terreno...)."""
     title = x.get("title") or ""
@@ -148,14 +151,17 @@ def kind(text, cats=()):
     if cats and cats <= IT_CATS_F:
         return "F", "Categoría catastral sin vivienda"
     has_house = re.search(HOUSE_RX, t) or cats & {"ABITAZIONE_TIPO_ECO", "ABITAZIONE_TIPO_CIV", "ABITAZIONE_TIPO_POP",
-                                                    "ABITAZIONE_TIPO_UPOP", "ABITAZIONE_IN_VILLINI", "APPARTAMENTO", "VILLA"}
+                                                    "ABITAZIONE_TIPO_UPOP", "ABITAZIONE_IN_VILLINI", "APPARTAMENTO", "VILLA",
+                                                    "ABITAZIONE_TIPO_RUR"}
     for k, rx, why in KIND_RULES:
         if k in "FE" and has_house:
             continue  # una casa con trastero, cantina o establo sigue siendo una casa
         if re.search(rx, t, re.I):
             return k, why
-    if cats & {"ABITAZIONE_TIPO_RUR", "STALLE_SCUDERIE_RIMESSE"}:
+    if "STALLE_SCUDERIE_RIMESSE" in cats and not has_house:
         return "E", "Categoría rural/agrícola"
+    if "ABITAZIONE_TIPO_RUR" in cats:
+        return "?", "Casa rural; la descripción no dice en qué estado está"
     return "?", "La descripción no dice en qué estado está"
 
 

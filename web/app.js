@@ -43,11 +43,13 @@ const isFavZone = (x) => prefs.favRegions.includes(x.region);
 const tileUrl = () => "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const tileAttr = "© OpenStreetMap";
 
-const DEFAULTS = { country: "ALL", sort: "ready", price: 30000, pop: 4, iso: 0, kinds: ["A", "B", "C", "D", "E", "?"],
+const DEFAULTS = { country: "ALL", sort: "ready", price: 30000, pop: 4, iso: 0, kinds: ["A", "B", "?"],
   hideStop: true, hideHigh: false, rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, hideNo: true, onlyPhotos: false, translate: true, q: "" };
 const f = Object.assign({}, DEFAULTS, store.get("filters", {}));
 // v2: el orden por defecto pasa a ser «listas para entrar y más recientes»
-if (store.get("filtersV", 1) < 2) { f.sort = DEFAULTS.sort; store.set("filtersV", 2); }
+if (store.get("filtersV", 1) < 2) f.sort = DEFAULTS.sort;
+// v3: ya no hay ruinas ni edificaciones agrícolas
+if (store.get("filtersV", 1) < 3) { f.kinds = f.kinds.filter((k) => DEFAULTS.kinds.includes(k)); if (!f.kinds.length) f.kinds = [...DEFAULTS.kinds]; store.set("filtersV", 3); }
 // primero las que no necesitan reforma; luego estado sin datos, reforma, ruinas...
 const READY_RANK = { A: 0, "?": 1, B: 2, C: 3, E: 4, D: 5, F: 6 };
 const ago = (d) => {
@@ -409,7 +411,7 @@ async function batchGeo() {
 // --- eventos
 document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => show(b.dataset.view)));
 document.querySelectorAll("#country button").forEach((b) => (b.onclick = () => { f.country = b.dataset.c; onFilter(); }));
-$("#kinds").innerHTML = Object.entries(KINDS).map(([k, v]) => `<button data-k="${k}">${v}</button>`).join("");
+$("#kinds").innerHTML = Object.entries(KINDS).filter(([k]) => DEFAULTS.kinds.includes(k)).map(([k, v]) => `<button data-k="${k}">${v}</button>`).join("");
 document.querySelectorAll("#kinds button").forEach((b) => (b.onclick = () => {
   const k = b.dataset.k;
   f.kinds = f.kinds.includes(k) ? f.kinds.filter((x) => x !== k) : [...f.kinds, k];
