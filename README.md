@@ -2,7 +2,18 @@
 
 App personal (PWA) para encontrar casas rurales o de pueblo baratas en España e Italia.
 
-## Arrancar
+## En el iPhone
+
+Abre **https://madamemarialp.github.io/mirancho/** en Safari → Compartir → «Añadir a pantalla de inicio».
+La versión publicada se actualiza sola a las 9:00 y a las 21:00 (la sube tu Mac con `publish.sh`).
+Allí la ubicación se calcula en el propio móvil; la IA funciona en modo manual (claude.ai).
+
+## Privacidad
+
+Antes de publicar, `collector.py` tapa los nombres de particulares que aparecen en los anuncios («[nombre omitido]»).
+Nunca se suben `.env`, las cachés ni nada de lo que guardas en cada dispositivo (nombre, teléfono, guardadas, análisis).
+
+## Arrancar en el Mac
 
 ```bash
 ~/casas-rurales/start.sh
