@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from analysis import NOT_WANTED, enrich, is_home
+from analysis import NOT_WANTED, RISKY, enrich, is_home
 from regions import region
 
 ROOT = Path(__file__).resolve().parent
@@ -504,7 +504,7 @@ def main():
         for x in d["listings"]:
             x["population"] = pops[x["country"]].get(norm(x["town"]))
         d["listings"] = [add_region(enrich(x)) for x in d["listings"] if (x.get("price") or 0) >= 500 and is_home(x)]
-        d["listings"] = [x for x in d["listings"] if x["kindCode"] not in NOT_WANTED]
+        d["listings"] = [x for x in d["listings"] if x["kindCode"] not in NOT_WANTED and x["verdict"] not in RISKY]
         for x in d["listings"]:
             for k in ("title", "description", "address"):
                 x[k] = redact(x.get(k))
@@ -531,7 +531,7 @@ def main():
     for x in listings:
         x["firstSeen"] = seen_before.get(x["id"]) or now
     listings = [add_region(enrich(x)) for x in listings if (x.get("price") or 0) >= 500 and is_home(x)]
-    listings = [x for x in listings if x["kindCode"] not in NOT_WANTED]
+    listings = [x for x in listings if x["kindCode"] not in NOT_WANTED and x["verdict"] not in RISKY]
     listings.sort(key=lambda x: x["price"] or 0)
     for x in listings:
         for k in ("title", "description", "address"):

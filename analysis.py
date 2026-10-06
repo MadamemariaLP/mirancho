@@ -86,6 +86,7 @@ CATASTO_RX = re.compile(r"\bcat(?:egoria|\.)?\s*([A-F])\s*/?\s*\d", re.I)
 
 
 NOT_WANTED = set("CDEF")  # ruinas, edificaciones agrícolas y lo que no es vivienda
+RISKY = {"stop", "high"}  # cuotas, usufructos, ocupadas, obras ilegales... no se publican
 
 
 def is_home(x):

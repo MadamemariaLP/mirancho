@@ -44,7 +44,7 @@ const tileUrl = () => "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const tileAttr = "© OpenStreetMap";
 
 const DEFAULTS = { country: "ALL", sort: "ready", price: 30000, pop: 4, iso: 0, kinds: ["A", "B", "?"],
-  hideStop: true, hideHigh: false, rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, hideNo: true, onlyPhotos: false, translate: true, q: "" };
+  rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, hideNo: true, onlyPhotos: false, translate: true, q: "" };
 const f = Object.assign({}, DEFAULTS, store.get("filters", {}));
 // v2: el orden por defecto pasa a ser «listas para entrar y más recientes»
 if (store.get("filtersV", 1) < 2) f.sort = DEFAULTS.sort;
@@ -67,7 +67,7 @@ function syncControls() {
   $("#price").value = f.price;
   $("#pop").value = f.pop;
   $("#iso").value = f.iso;
-  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos", "translate"]) $("#" + id).checked = f[id];
+  for (const id of ["rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos", "translate"]) $("#" + id).checked = f[id];
   $("#favOnly").setAttribute("aria-pressed", String(f.favOnly));
   $("#favOnly").classList.toggle("on", f.favOnly);
   document.querySelectorAll("#country button").forEach((b) => b.classList.toggle("on", b.dataset.c === f.country));
@@ -76,7 +76,7 @@ function syncControls() {
   const p = POP_STEPS[f.pop];
   $("#popVal").textContent = p === Infinity ? "sin límite" : p.toLocaleString("es-ES");
   $("#isoVal").textContent = ISO_STEPS[f.iso][2];
-  const active = ["price", "pop", "iso", "hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos"]
+  const active = ["price", "pop", "iso", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos"]
     .filter((k) => f[k] !== DEFAULTS[k]).length + (f.kinds.length !== DEFAULTS.kinds.length ? 1 : 0);
   $("#activeFilters").textContent = active || "";
 }
@@ -91,8 +91,6 @@ function filtered() {
     if (f.hideNo && noteOf(x.id)?.status === "no") return false;
     if (x.price > f.price) return false;
     if (x.population == null ? !f.unknownPop : x.population > maxPop) return false;
-    if (f.hideStop && x.verdict === "stop") return false;
-    if (f.hideHigh && x.verdict === "high") return false;
     if (!f.kinds.includes(x.kindCode)) return false;
     if (f.rural && !x.rural) return false;
     if (f.onlyPhotos && !x.photos?.length) return false;
@@ -230,7 +228,7 @@ function show(view) {
 
 function onFilter() {
   f.q = $("#q").value; f.sort = $("#sort").value; f.price = +$("#price").value; f.pop = +$("#pop").value; f.iso = +$("#iso").value;
-  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos", "translate"]) f[id] = $("#" + id).checked;
+  for (const id of ["rural", "unknownPop", "onlyNew", "favFirst", "hideNo", "onlyPhotos", "translate"]) f[id] = $("#" + id).checked;
   store.set("filters", f);
   shown = PAGE;
   syncControls();
@@ -421,7 +419,7 @@ document.querySelectorAll("#kinds button").forEach((b) => (b.onclick = () => {
 let filterTimer;
 const onFilterSoon = () => { clearTimeout(filterTimer); filterTimer = setTimeout(onFilter, 160); };
 for (const id of ["q", "price", "pop", "iso"]) $("#" + id).addEventListener("input", onFilterSoon);
-for (const id of ["sort", "hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst"]) $("#" + id).addEventListener("change", onFilter);
+for (const id of ["sort", "rural", "unknownPop", "onlyNew", "favFirst"]) $("#" + id).addEventListener("change", onFilter);
 $("#toggleFilters").onclick = () => {
   const m = $("#morefilters"); m.hidden = !m.hidden;
   $("#toggleFilters").setAttribute("aria-expanded", String(!m.hidden));

@@ -45,7 +45,7 @@ El canal de alertas al móvil es privado: está en `PRIVADO.md`, que solo existe
 
 Al tocar una casa se abre su ficha:
 
-- **⭐ Resumen:** semáforo de riesgo legal con la frase del anuncio, puntuación 0–100 y el «¿por qué?».
+- **⭐ Resumen:** semáforo de riesgo legal (🟢 sin señales · 🟡 revisar antes) con la frase del anuncio, puntuación 0–100 y el «¿por qué?».
 - **📝 Notas y fecha:** estado (💚 Me interesa · 👀 Visitada · 💶 Pujar hasta X € · ❌ Descartada), notas libres y botón para añadir la subasta al calendario con avisos.
 - **📍 Ubicación:** mapa, tiempos en coche, nivel de aislamiento, suministros y visores oficiales.
 - **🌳 Terreno:** altitud, pendiente, orientación, sol, cultivos y agua.
@@ -69,7 +69,7 @@ Al tocar una casa se abre su ficha:
 | Subastas BOE (subastas.boe.es) | Viviendas y fincas rústicas con casa: subastas judiciales, notariales, de Hacienda o de la Seguridad Social |
 | Portale Vendite Pubbliche (pvp.giustizia.it) | Aste giudiziarie de inmuebles residenciales |
 
-Solo se guardan **viviendas**: `analysis.is_home()` descarta garajes, plazas de parking, trasteros, almacenes, locales, oficinas, naves y terrenos sin casa, y también las ruinas y las edificaciones agrícolas.
+Solo se guardan **viviendas**: `analysis.is_home()` descarta garajes, plazas de parking, trasteros, almacenes, locales, oficinas, naves y terrenos sin casa, también las ruinas y las edificaciones agrícolas, y las de riesgo legal alto (🟠/🔴: cuotas, usufructos, ocupadas, obras sin licencia…).
 
 Idealista, Fotocasa, Immobiliare y Casa.it bloquean la lectura automática, por eso solo aparecen como enlaces.
 
