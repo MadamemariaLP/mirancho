@@ -58,7 +58,7 @@ function fullScore(x, g) {
 const aiResult = (id) => store.get("ai:" + id, null);
 
 const SECTIONS = [
-  ["resumen", "⭐ Resumen"], ["ubicacion", "📍 Ubicación"], ["terreno", "🌳 Terreno"],
+  ["resumen", "⭐ Resumen"], ["notas", "📝 Notas y fecha"], ["ubicacion", "📍 Ubicación"], ["terreno", "🌳 Terreno"],
   ["reforma", "🔨 Reforma"], ["valor", "📈 ¿Está barata?"], ["contacto", "📞 Contactar"],
 ];
 
@@ -79,7 +79,7 @@ function openDetail(x) {
     e.preventDefault(); $("#s-" + a.dataset.k).scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   };
   $("#sheetBody").innerHTML = SECTIONS.map(([k, v]) => `<section id="s-${k}" class="sec"><h2>${v}</h2><div class="sec-body"></div></section>`).join("");
-  renderResumen(); renderUbicacion(); renderTerreno(); renderReforma(); renderValor(); renderContacto();
+  renderResumen(); renderNotas(); renderUbicacion(); renderTerreno(); renderReforma(); renderValor(); renderContacto();
   if (!dlg.open) dlg.showModal();
   $("#sheetBody").scrollTop = 0;
   history.replaceState(null, "", "#casa=" + encodeURIComponent(x.id));
@@ -92,6 +92,7 @@ $("#detail").addEventListener("close", () => {
   if (detailMap) { detailMap.remove(); detailMap = null; }
   renderList();
   if (current === "alerts") renderAlerts();
+  if (current === "favs") renderFavs();
 });
 
 const body = (k) => $(`#s-${k} .sec-body`);

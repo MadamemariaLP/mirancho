@@ -305,3 +305,22 @@ dialog.mini textarea { margin-top: 8px; }
   .top-actions .ghost.small { padding: 7px 10px; font-size: 1rem; }
   .top .muted { font-size: .72rem; }
 }
+
+/* ---- notas y fechas */
+.note-chip { margin: 2px 0 0; font-size: .82rem; color: var(--ink); background: var(--surface-2); border-radius: 10px; padding: 5px 9px; overflow-wrap: anywhere; }
+.status-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.status-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 8px 12px; cursor: pointer; font-weight: 600; font-size: .88rem; }
+.status-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.bid-row { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); margin-bottom: 10px; max-width: 220px; }
+.cal-box { background: var(--surface-2); border-radius: 14px; padding: 12px 14px; margin-top: 12px; display: grid; gap: 6px; }
+.cal-box p { margin: 0; }
+#favStatus { margin: 12px 0 4px; }
+.upcoming { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 6px; }
+.upcoming li { display: flex; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; cursor: pointer; }
+.upcoming li.soon { border-color: var(--warn); }
+.upcoming .days { display: grid; place-items: center; min-width: 44px; font-size: .7rem; color: var(--muted); line-height: 1.1; }
+.upcoming .days b { font-size: 1.25rem; color: var(--ink); }
+.upcoming li.soon .days b { color: var(--warn); }
+.upcoming .what { font-size: .9rem; }
+.os-tabs { margin: 4px 0 2px; }
+.os-tabs button { font-size: .85rem; padding: 7px 10px; }

@@ -92,6 +92,7 @@
         <label><input id="unknownPop" type="checkbox" checked> Incluir pueblos sin dato de población</label>
         <label><input id="onlyNew" type="checkbox"> Solo nuevas desde mi última visita</label>
         <label><input id="favFirst" type="checkbox" checked> Mostrar primero las de mis zonas</label>
+        <label><input id="hideNo" type="checkbox" checked> Ocultar las que he descartado ❌</label>
       </div>
       <button id="resetFilters" class="link">Restablecer filtros</button>
     </div>
@@ -131,6 +132,8 @@
         <p class="muted small">Tus guardadas viven en este dispositivo. Compártelas con un enlace (WhatsApp, mensaje…).</p>
         <button id="shareFavs" class="btn primary">📤 Compartir</button>
       </div>
+      <div id="upcoming"></div>
+      <div class="chips" id="favStatus"></div>
       <ul id="favs" class="cards"></ul>
     </div>
     <div id="view-portals" class="view" hidden></div>
@@ -156,6 +159,7 @@
   <script src="geo.js"></script>
   <script src="app.js"></script>
   <script src="detail.js"></script>
+  <script src="notes.js"></script>
   <script src="share.js"></script>
 </body>
 </html>

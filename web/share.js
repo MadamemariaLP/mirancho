@@ -40,6 +40,7 @@ function openShare() {
   const ids = [...favs];
   const withAi = ids.filter((id) => aiResult(id) && !aiResult(id).error);
   const withValor = ids.filter((id) => store.get("valor:" + id, null));
+  const withNotes = ids.filter((id) => noteOf(id));
   const me = store.get("me", { name: "", phone: "" });
   if (!ids.length) { toast("Primero guarda alguna casa con ☆"); return; }
   const dlg = shareDialog(`
@@ -48,6 +49,7 @@ function openShare() {
     <div class="checks">
       <label><input type="checkbox" id="shFavs" checked disabled> ★ ${ids.length} casa(s) guardada(s)</label>
       <label><input type="checkbox" id="shAi" ${withAi.length ? "checked" : "disabled"}> 🤖 Análisis de IA (${withAi.length})</label>
+      <label><input type="checkbox" id="shNotes" ${withNotes.length ? "checked" : "disabled"}> 📝 Notas y estados (${withNotes.length})</label>
       <label><input type="checkbox" id="shValor" ${withValor.length ? "checked" : "disabled"}> 📈 Cálculos de «¿Está barata?» (${withValor.length})</label>
       <label><input type="checkbox" id="shMe" ${me.name ? "" : "disabled"}> 👤 Mi nombre y teléfono para los mensajes${me.name ? ` (${esc(me.name)})` : " (aún no lo has escrito)"}</label>
     </div>
@@ -61,6 +63,7 @@ function openShare() {
     if ($("#shAi").checked) data.ai = Object.fromEntries(withAi.map((id) => [id, aiResult(id)]));
     if ($("#shValor").checked) data.valor = Object.fromEntries(withValor.map((id) => [id, store.get("valor:" + id)]));
     if ($("#shMe").checked) data.me = me;
+    if ($("#shNotes").checked) data.notes = Object.fromEntries(withNotes.map((id) => [id, noteOf(id)]));
     const url = PUBLIC_URL + "#import=" + await packShare(data);
     const text = `Te comparto ${ids.length} casa(s) de MiRancho`;
     dlg.close();
@@ -81,6 +84,7 @@ async function maybeImport() {
   const favsIn = (data.favs || []).filter((id) => byId[id]);
   const aiIn = Object.entries(data.ai || {}).filter(([id]) => byId[id]);
   const valorIn = Object.entries(data.valor || {}).filter(([id]) => byId[id]);
+  const notesIn = Object.entries(data.notes || {}).filter(([id]) => byId[id]);
   const gone = (data.favs || []).length - favsIn.length;
   const myMe = store.get("me", { name: "" });
   const dlg = shareDialog(`
@@ -89,6 +93,7 @@ async function maybeImport() {
     <div class="checks">
       <label><input type="checkbox" id="imFavs" ${favsIn.length ? "checked" : "disabled"}> ★ ${favsIn.length} casa(s) a tus guardadas</label>
       <label><input type="checkbox" id="imAi" ${aiIn.length ? "checked" : "disabled"}> 🤖 ${aiIn.length} análisis de IA</label>
+      <label><input type="checkbox" id="imNotes" ${notesIn.length ? "checked" : "disabled"}> 📝 ${notesIn.length} nota(s) y estado(s)</label>
       <label><input type="checkbox" id="imValor" ${valorIn.length ? "checked" : "disabled"}> 📈 ${valorIn.length} cálculo(s) de «¿Está barata?»</label>
       <label><input type="checkbox" id="imMe" ${data.me?.name ? (myMe.name ? "" : "checked") : "disabled"}> 👤 Usar nombre y teléfono${data.me?.name ? `: ${esc(data.me.name)}${data.me.phone ? " · " + esc(data.me.phone) : ""}` : " (no incluidos)"}${myMe.name && data.me?.name ? ` <span class="muted">(sustituye a «${esc(myMe.name)}»)</span>` : ""}</label>
     </div>
@@ -104,6 +109,17 @@ async function maybeImport() {
     if ($("#imAi").checked) for (const [id, a] of aiIn) if (!aiResult(id)) store.set("ai:" + id, a);
     if ($("#imValor").checked) for (const [id, v] of valorIn) if (!store.get("valor:" + id, null)) store.set("valor:" + id, v);
     if ($("#imMe").checked && data.me) store.set("me", data.me);
+    if ($("#imNotes").checked) {
+      const who = data.me?.name || "la otra persona";
+      for (const [id, theirs] of notesIn) {
+        const mine = noteOf(id);
+        if (!mine) { store.set("note:" + id, theirs); continue; }
+        // conserva lo tuyo y añade su texto si es distinto
+        const text = theirs.text && !(mine.text || "").includes(theirs.text)
+          ? [mine.text, `— ${who}: ${theirs.text}`].filter(Boolean).join("\n") : mine.text;
+        store.set("note:" + id, { ...mine, status: mine.status || theirs.status, maxBid: mine.maxBid ?? theirs.maxBid, text });
+      }
+    }
     dlg.close();
     renderFavCount();
     show("favs");
@@ -112,7 +128,9 @@ async function maybeImport() {
 }
 
 // ---------- Invitar y bienvenida
-const isIOSDevice = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+// iPadOS se presenta como «Macintosh» pero con pantalla táctil
+const isIOSDevice = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const isAndroid = () => /Android/.test(navigator.userAgent);
 const isInstalled = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 
 function inviteText(topic) {
@@ -123,7 +141,7 @@ Te invito a MiRancho, la app donde buscamos juntos casas rurales y de pueblo bar
 👉 Ábrela aquí: ${PUBLIC_URL}#bienvenida
 
 📲 Para tenerla como una app:
-• iPhone: ábrela en Safari → botón Compartir (cuadrado con flecha) → «Añadir a pantalla de inicio» → Añadir.
+• iPhone/iPad: ábrela en Safari → botón Compartir (cuadrado con flecha ⬆︎) → «Añadir a pantalla de inicio» → Añadir.
 • Android: ábrela en Chrome → menú ⋮ → «Instalar app» o «Añadir a pantalla de inicio».
 ${topic ? `
 🔔 Para recibir las alertas de casas nuevas:
@@ -163,19 +181,29 @@ async function openInvite() {
 function showWelcome(force = false) {
   if (!force && store.get("welcomed", false)) return;
   store.set("welcomed", true);
-  const ios = isIOSDevice(), installed = isInstalled();
-  const steps = installed ? `<p class="good">✅ Ya la tienes instalada como app.</p>` : ios ? `
-      <ol class="steps">
-        <li>Asegúrate de estar en <b>Safari</b>.</li>
-        <li>Pulsa <b>Compartir</b> <span class="kbd">⬆︎</span> (abajo en el centro, o arriba a la derecha en iPad).</li>
-        <li>Elige <b>«Añadir a pantalla de inicio»</b> y pulsa <b>Añadir</b>.</li>
-        <li>Abre MiRancho desde su icono verde 🏡.</li>
-      </ol>` : `
-      <ol class="steps">
-        <li>En <b>Chrome</b> (Android), pulsa el menú <span class="kbd">⋮</span>.</li>
+  const installed = isInstalled();
+  const tab0 = isIOSDevice() ? "ios" : isAndroid() ? "android" : "pc";
+  const STEPS = {
+    ios: `<ol class="steps">
+        <li>Abre el enlace en <b>Safari</b> (si estás en WhatsApp, pulsa ⋯ o el icono de brújula → «Abrir en Safari»).</li>
+        <li>Pulsa <b>Compartir</b> <span class="kbd">⬆︎</span>: abajo en el centro (en iPad, arriba a la derecha).</li>
+        <li>Baja y elige <b>«Añadir a pantalla de inicio»</b>.</li>
+        <li>Pulsa <b>Añadir</b> y abre MiRancho desde su icono verde 🏡.</li>
+      </ol>`,
+    android: `<ol class="steps">
+        <li>Abre el enlace en <b>Chrome</b>.</li>
+        <li>Pulsa el menú <span class="kbd">⋮</span> (arriba a la derecha).</li>
         <li>Elige <b>«Instalar app»</b> o <b>«Añadir a pantalla de inicio»</b>.</li>
-        <li>En el ordenador: icono de instalar en la barra de direcciones de Chrome, o en Safari «Archivo → Añadir al Dock».</li>
-      </ol>`;
+      </ol>`,
+    pc: `<ol class="steps">
+        <li><b>Safari (Mac):</b> menú Archivo → <b>«Añadir al Dock»</b>.</li>
+        <li><b>Chrome:</b> icono de instalar en la barra de direcciones, o menú ⋮ → <b>«Instalar MiRancho»</b>.</li>
+      </ol>`,
+  };
+  const steps = installed ? `<p class="good">✅ Ya la tienes instalada como app.</p>` : `
+      <div class="seg os-tabs">${[["ios", "🍏 iPhone / iPad"], ["android", "🤖 Android"], ["pc", "💻 Ordenador"]]
+        .map(([k, v]) => `<button data-os="${k}" class="${k === tab0 ? "on" : ""}">${v}</button>`).join("")}</div>
+      <div id="osSteps">${STEPS[tab0]}</div>`;
   const dlg = shareDialog(`
     <div class="welcome">
       <img src="icon-192.png" alt="" width="64" height="64">
@@ -191,5 +219,9 @@ function showWelcome(force = false) {
       </ul>
       <button class="btn primary wide" id="welcomeGo">¡Vamos a buscar!</button>
     </div>`);
+  dlg.querySelectorAll(".os-tabs button").forEach((b) => (b.onclick = () => {
+    dlg.querySelectorAll(".os-tabs button").forEach((o) => o.classList.toggle("on", o === b));
+    $("#osSteps").innerHTML = STEPS[b.dataset.os];
+  }));
   $("#welcomeGo").onclick = () => dlg.close();
 }

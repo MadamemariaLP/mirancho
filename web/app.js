@@ -42,7 +42,7 @@ const tileUrl = () => "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const tileAttr = "© OpenStreetMap";
 
 const DEFAULTS = { country: "ALL", sort: "score", price: 30000, pop: 4, iso: 0, kinds: ["A", "B", "C", "D", "E", "?"],
-  hideStop: true, hideHigh: false, rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, q: "" };
+  hideStop: true, hideHigh: false, rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, hideNo: true, q: "" };
 const f = Object.assign({}, DEFAULTS, store.get("filters", {}));
 
 const isNew = (x) => lastVisit && x.firstSeen > lastVisit;
@@ -54,7 +54,7 @@ function syncControls() {
   $("#price").value = f.price;
   $("#pop").value = f.pop;
   $("#iso").value = f.iso;
-  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst"]) $("#" + id).checked = f[id];
+  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo"]) $("#" + id).checked = f[id];
   $("#favOnly").setAttribute("aria-pressed", String(f.favOnly));
   $("#favOnly").classList.toggle("on", f.favOnly);
   document.querySelectorAll("#country button").forEach((b) => b.classList.toggle("on", b.dataset.c === f.country));
@@ -63,7 +63,7 @@ function syncControls() {
   const p = POP_STEPS[f.pop];
   $("#popVal").textContent = p === Infinity ? "sin límite" : p.toLocaleString("es-ES");
   $("#isoVal").textContent = ISO_STEPS[f.iso][2];
-  const active = ["price", "pop", "iso", "hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst"]
+  const active = ["price", "pop", "iso", "hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo"]
     .filter((k) => f[k] !== DEFAULTS[k]).length + (f.kinds.length !== DEFAULTS.kinds.length ? 1 : 0);
   $("#activeFilters").textContent = active || "";
 }
@@ -75,6 +75,7 @@ function filtered() {
   const res = all.filter((x) => {
     if (f.country !== "ALL" && x.country !== f.country) return false;
     if (f.favOnly && !isFavZone(x)) return false;
+    if (f.hideNo && noteOf(x.id)?.status === "no") return false;
     if (x.price > f.price) return false;
     if (x.population == null ? !f.unknownPop : x.population > maxPop) return false;
     if (f.hideStop && x.verdict === "stop") return false;
@@ -132,6 +133,7 @@ function card(x) {
     <div class="money"><span class="price">${eur(x.price)}</span>
       <span class="sub">${x.country === "ES" ? "valor de subasta" : "precio base"}${x.minOffer ? ` · desde ${eur(x.minOffer)}` : ""}${x.discount ? ` · ${x.discount}% bajo tasación` : ""}</span></div>
     ${g && !g.error ? `<p class="geo-mini">🛒 ${g.supermarket ?? "?"} min · 🏥 ${g.hospital ?? "?"} min · 🌄 aislamiento ${g.approx ? "≈" : ""}${g.isolation}</p>` : ""}
+    ${noteChip(x)}
     <ul class="why">${reasons}</ul>
     <p class="date">${x.date ? `${x.country === "ES" ? "Fin de subasta" : "Fecha de venta"}: ${new Date(x.date).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}` : ""}</p>`;
   $(".fav", li).onclick = (e) => { e.stopPropagation(); toggleFav(x.id); $(".fav", li).textContent = favs.has(x.id) ? "★" : "☆"; };
@@ -158,8 +160,16 @@ function renderList() {
   if (current === "map") renderMap(res);
 }
 
+let favStatus = "all";
 function renderFavs() {
-  const res = all.filter((x) => favs.has(x.id));
+  renderUpcoming();
+  const opts = [["all", "Todas"], ...Object.entries(STATUS).map(([k, v]) => [k, `${v.icon} ${v.label}`]), ["none", "Sin estado"]];
+  $("#favStatus").innerHTML = opts.map(([k, v]) => `<button data-k="${k}" class="${favStatus === k ? "on" : ""}">${v}</button>`).join("");
+  $("#favStatus").querySelectorAll("button").forEach((b) => (b.onclick = () => { favStatus = b.dataset.k; renderFavs(); }));
+  const res = all.filter((x) => favs.has(x.id)).filter((x) => {
+    const st = noteOf(x.id)?.status || "none";
+    return favStatus === "all" ? true : st === favStatus;
+  }).sort((a, b) => (daysLeft(a) ?? 1e4) - (daysLeft(b) ?? 1e4));
   $("#favs").replaceChildren(...res.map(card));
   if (!res.length) $("#favs").innerHTML = `<li class="empty">Aún no has guardado ninguna.<br>Pulsa ☆ en una casa para tenerla aquí.</li>`;
 }
@@ -201,7 +211,7 @@ function show(view) {
 
 function onFilter() {
   f.q = $("#q").value; f.sort = $("#sort").value; f.price = +$("#price").value; f.pop = +$("#pop").value; f.iso = +$("#iso").value;
-  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst"]) f[id] = $("#" + id).checked;
+  for (const id of ["hideStop", "hideHigh", "rural", "unknownPop", "onlyNew", "favFirst", "hideNo"]) f[id] = $("#" + id).checked;
   store.set("filters", f);
   shown = PAGE;
   syncControls();
