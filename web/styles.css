@@ -291,3 +291,17 @@ dialog.mini { border: 1px solid var(--line); border-radius: 18px; background: va
 dialog.mini::backdrop { background: rgba(2, 6, 12, .6); }
 dialog.mini h2 { margin: 0 0 6px; }
 dialog.mini .checks { margin: 12px 0; }
+.welcome { display: grid; gap: 8px; text-align: left; }
+.welcome img { border-radius: 16px; justify-self: center; }
+.welcome h2 { text-align: center; font-size: 1.3rem; }
+.welcome h3 { margin: 8px 0 0; }
+.welcome p, .welcome ul { margin: 0; }
+.welcome ul { padding-left: 18px; display: grid; gap: 4px; }
+.kbd { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; background: var(--surface-2); }
+dialog.mini { max-height: calc(100% - 32px); overflow-y: auto; }
+dialog.mini textarea { margin-top: 8px; }
+@media (max-width: 520px) {
+  .top-actions .lbl { display: none; }
+  .top-actions .ghost.small { padding: 7px 10px; font-size: 1rem; }
+  .top .muted { font-size: .72rem; }
+}

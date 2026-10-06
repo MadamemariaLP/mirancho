@@ -110,3 +110,86 @@ async function maybeImport() {
     toast(`Añadidas ${n} casa(s) nuevas a tus guardadas`);
   };
 }
+
+// ---------- Invitar y bienvenida
+const isIOSDevice = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isInstalled = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+function inviteText(topic) {
+  return `🏡 ¡Encontremos nuestro rancho!
+
+Te invito a MiRancho, la app donde buscamos juntos casas rurales y de pueblo baratas en España e Italia (subastas oficiales, con riesgos, reforma y entorno analizados).
+
+👉 Ábrela aquí: ${PUBLIC_URL}#bienvenida
+
+📲 Para tenerla como una app:
+• iPhone: ábrela en Safari → botón Compartir (cuadrado con flecha) → «Añadir a pantalla de inicio» → Añadir.
+• Android: ábrela en Chrome → menú ⋮ → «Instalar app» o «Añadir a pantalla de inicio».
+${topic ? `
+🔔 Para recibir las alertas de casas nuevas:
+1. Instala la app gratuita «ntfy».
+2. Pulsa + y suscríbete al canal: ${topic}
+(Es privado, no lo compartas.)
+` : ""}
+⭐ Guarda las que te gusten con la estrella y compártemelas desde «Guardadas».`;
+}
+
+async function openInvite() {
+  let topic = "";
+  if (serverMode) topic = (await fetch("/api/ntfy").then((r) => r.json()).catch(() => ({}))).topic || "";
+  const dlg = shareDialog(`
+    <h2>👥 Invitar a MiRancho</h2>
+    <p class="muted small">Envía este mensaje por WhatsApp, SMS o correo. Puedes editarlo antes.</p>
+    ${topic ? `<label class="small"><input type="checkbox" id="invTopic" checked> Incluir el canal de alertas al móvil (solo para personas de confianza)</label>` : ""}
+    <textarea id="invText" rows="14"></textarea>
+    <div class="actions">
+      <button class="btn ghost" id="invCancel">Cerrar</button>
+      <button class="btn primary" id="invGo">📤 Enviar invitación</button>
+    </div>`);
+  const fill = () => { $("#invText").value = inviteText($("#invTopic")?.checked ? topic : ""); };
+  fill();
+  $("#invTopic")?.addEventListener("change", fill);
+  $("#invCancel").onclick = () => dlg.close();
+  $("#invGo").onclick = async () => {
+    const text = $("#invText").value;
+    if (navigator.share) {
+      try { await navigator.share({ title: "MiRancho", text }); dlg.close(); return; } catch (e) { if (e.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(text); toast("Invitación copiada: pégala en WhatsApp"); dlg.close(); }
+    catch { $("#invText").select(); toast("Selecciona y copia el texto"); }
+  };
+}
+
+function showWelcome(force = false) {
+  if (!force && store.get("welcomed", false)) return;
+  store.set("welcomed", true);
+  const ios = isIOSDevice(), installed = isInstalled();
+  const steps = installed ? `<p class="good">✅ Ya la tienes instalada como app.</p>` : ios ? `
+      <ol class="steps">
+        <li>Asegúrate de estar en <b>Safari</b>.</li>
+        <li>Pulsa <b>Compartir</b> <span class="kbd">⬆︎</span> (abajo en el centro, o arriba a la derecha en iPad).</li>
+        <li>Elige <b>«Añadir a pantalla de inicio»</b> y pulsa <b>Añadir</b>.</li>
+        <li>Abre MiRancho desde su icono verde 🏡.</li>
+      </ol>` : `
+      <ol class="steps">
+        <li>En <b>Chrome</b> (Android), pulsa el menú <span class="kbd">⋮</span>.</li>
+        <li>Elige <b>«Instalar app»</b> o <b>«Añadir a pantalla de inicio»</b>.</li>
+        <li>En el ordenador: icono de instalar en la barra de direcciones de Chrome, o en Safari «Archivo → Añadir al Dock».</li>
+      </ol>`;
+  const dlg = shareDialog(`
+    <div class="welcome">
+      <img src="icon-192.png" alt="" width="64" height="64">
+      <h2>¡Encontremos nuestro rancho! 🏡</h2>
+      <p>MiRancho busca casas rurales y de pueblo baratas en las subastas oficiales de España e Italia y te dice, de cada una, si hay trampas, cuánto costaría reformarla y cómo es su entorno.</p>
+      <h3>📲 Instálala en tu móvil</h3>
+      ${steps}
+      <h3>Cómo se usa</h3>
+      <ul class="small">
+        <li>🏡 <b>Casas</b>: filtra por precio, zona y tipo; toca una casa para ver su ficha.</li>
+        <li>🔔 <b>Alertas</b>: casas nuevas en nuestras zonas favoritas.</li>
+        <li>★ <b>Guardadas</b>: las que te gusten; compártelas con «📤 Compartir».</li>
+      </ul>
+      <button class="btn primary wide" id="welcomeGo">¡Vamos a buscar!</button>
+    </div>`);
+  $("#welcomeGo").onclick = () => dlg.close();
+}

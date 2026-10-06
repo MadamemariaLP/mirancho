@@ -341,6 +341,8 @@ async function load() {
   renderList();
   renderFavCount();
   await maybeImport();
+  if (location.hash.includes("bienvenida")) { history.replaceState(null, "", location.pathname); showWelcome(true); }
+  else if (!serverMode && !isInstalled()) showWelcome();
   const deep = new URLSearchParams(location.hash.slice(1)).get("casa");
   if (deep && byId[deep]) openDetail(byId[deep]);
 }
@@ -348,13 +350,13 @@ async function load() {
 async function refresh() {
   const btn = $("#refresh");
   try { await fetch("/api/refresh", { method: "POST" }); } catch { toast("Para actualizar, abre la app desde tu Mac con start.sh"); return; }
-  btn.disabled = true; btn.textContent = "Buscando…";
+  btn.disabled = true; btn.innerHTML = "⏳<span class=\"lbl\"> Buscando…</span>";
   toast("Buscando casas nuevas en el BOE y la PVP (unos minutos)…");
   const poll = setInterval(async () => {
     const s = await fetch("/api/status").then((r) => r.json()).catch(() => ({ running: false }));
     if (!s.running) {
       clearInterval(poll);
-      btn.disabled = false; btn.textContent = "↻ Actualizar";
+      btn.disabled = false; btn.innerHTML = "↻<span class=\"lbl\"> Actualizar</span>";
       const before = new Set(unseenAlerts().map((a) => a.id));
       await load();
       notifyNew(before);
@@ -414,6 +416,7 @@ $("#theme").onclick = () => setTheme(document.documentElement.dataset.theme === 
 $("#refresh").onclick = refresh;
 $("#batchGeo").onclick = batchGeo;
 $("#shareFavs").onclick = () => openShare();
+$("#invite").onclick = () => openInvite();
 window.addEventListener("hashchange", () => {
   if (location.hash.includes("import=")) { maybeImport(); return; }
   const id = new URLSearchParams(location.hash.slice(1)).get("casa");
