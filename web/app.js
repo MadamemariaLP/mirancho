@@ -43,9 +43,18 @@ const isFavZone = (x) => prefs.favRegions.includes(x.region);
 const tileUrl = () => "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const tileAttr = "© OpenStreetMap";
 
-const DEFAULTS = { country: "ALL", sort: "score", price: 30000, pop: 4, iso: 0, kinds: ["A", "B", "C", "D", "E", "?"],
+const DEFAULTS = { country: "ALL", sort: "ready", price: 30000, pop: 4, iso: 0, kinds: ["A", "B", "C", "D", "E", "?"],
   hideStop: true, hideHigh: false, rural: false, unknownPop: true, onlyNew: false, favFirst: true, favOnly: false, hideNo: true, onlyPhotos: false, translate: true, q: "" };
 const f = Object.assign({}, DEFAULTS, store.get("filters", {}));
+// v2: el orden por defecto pasa a ser «listas para entrar y más recientes»
+if (store.get("filtersV", 1) < 2) { f.sort = DEFAULTS.sort; store.set("filtersV", 2); }
+// primero las que no necesitan reforma; luego estado sin datos, reforma, ruinas...
+const READY_RANK = { A: 0, "?": 1, B: 2, C: 3, E: 4, D: 5, F: 6 };
+const ago = (d) => {
+  const n = Math.round((Date.now() - new Date(d + "T12:00:00")) / 864e5);
+  return n <= 0 ? "publicada hoy" : n === 1 ? "publicada ayer" : n < 60 ? `hace ${n} días` : `hace ${Math.round(n / 30)} meses`;
+};
+const published = (x) => x.published || (x.firstSeen || "").slice(0, 10);
 
 const isNew = (x) => lastVisit && x.firstSeen > lastVisit;
 const scoreOf = (x) => fullScore(x, geoIndex[x.id]).total;
@@ -97,7 +106,8 @@ function filtered() {
     score: (a, b) => scoreOf(b) - scoreOf(a),
     price: (a, b) => a.price - b.price,
     date: (a, b) => (a.date || "9").localeCompare(b.date || "9"),
-    new: (a, b) => (b.firstSeen || "").localeCompare(a.firstSeen || ""),
+    ready: (a, b) => (READY_RANK[a.kindCode] ?? 1) - (READY_RANK[b.kindCode] ?? 1) || published(b).localeCompare(published(a)),
+    new: (a, b) => published(b).localeCompare(published(a)) || (b.firstSeen || "").localeCompare(a.firstSeen || ""),
     pop: (a, b) => (a.population ?? 1e9) - (b.population ?? 1e9),
     iso: (a, b) => (geoIndex[b.id]?.isolation ?? -1) - (geoIndex[a.id]?.isolation ?? -1),
   }[f.sort];
@@ -133,7 +143,7 @@ function card(x) {
       <div>
         <p class="place">${x.country === "ES" ? "🇪🇸" : "🇮🇹"} <b>${esc(x.town || "—")}</b> · ${esc(x.province)} ${pop ? `· ${pop}` : ""}</p>
         <h3>${esc(tr(x, "title"))}</h3>
-        <p class="kind">${KINDS[x.kindCode]}${x.m2 ? ` · ${x.m2} m²` : ""}${x.land ? ` · terreno ${Math.round(x.land).toLocaleString("es-ES")} m²` : ""}</p>
+        <p class="kind">${KINDS[x.kindCode]}${x.m2 ? ` · ${x.m2} m²` : ""}${x.land ? ` · terreno ${Math.round(x.land).toLocaleString("es-ES")} m²` : ""}${x.published ? ` · 📅 ${ago(x.published)}` : ""}</p>
       </div>
       ${scoreRing(sc.total)}
     </div>

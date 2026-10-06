@@ -39,7 +39,8 @@ KIND_RULES = [  # orden = prioridad
      "Edificación agrícola"),
     ("B", r"da ristruttur|ristrutturazione|a reformar|para reformar|necesita reforma|mal estado|scadent|pessim|mediocr|degrad|da sistemare|precari",
      "Casa para reformar"),
-    ("A", r"abitabil|buono stato|buone condizioni|ristrutturat|reformad|buen estado|habitable|ottimo stato|recentemente",
+    ("A", r"abitabil|buono stato|buone condizioni|discreto stato|discrete condizioni|ottime condizioni|ristrutturat|arredat|"
+     r"reformad|buen estado|perfecto estado|para entrar a vivir|amueblad|habitable|ottimo stato|recentemente",
      "Habitable"),
 ]
 KIND_LABEL = {

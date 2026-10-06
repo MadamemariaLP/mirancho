@@ -59,6 +59,9 @@ def main():
                 log(f"  {n}/{len(todo)} ({(time.time() - t0) / n:.1f} s/anuncio)")
         CACHE.write_text(json.dumps(cache, ensure_ascii=False))
 
+    # vuelve a leer por si collector.py lo ha cambiado mientras se traducía
+    data = json.loads(LISTINGS.read_text())
+    it = [x for x in data["listings"] if x["country"] == "IT"]
     done = 0
     for x in it:
         x["title_es"] = cache.get(key(x.get("title")))

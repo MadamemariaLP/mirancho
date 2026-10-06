@@ -19,7 +19,7 @@ import unicodedata
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from analysis import enrich, is_home
@@ -130,6 +130,7 @@ def collect_it(max_price, pop):
                 "price": x.get("prezzoBaseAsta"),
                 "minOffer": x.get("offertaMinima"),
                 "date": x.get("dataVendita"),
+                "published": x.get("dataPubblicazione"),
                 "time": x.get("orarioVendita"),
                 "categories": sorted(cats),
                 "occupancy": ", ".join(sorted(set(x.get("disponibilita") or []))),
@@ -345,6 +346,8 @@ def collect_es(max_price, pop):
             "deposit": d["deposit"],
             "date": (d["end"] or "")[:10],
             "endISO": d["end"],
+            # las subastas del BOE duran 20 días naturales: se publican 20 días antes del cierre
+            "published": (datetime.fromisoformat(d["end"]) - timedelta(days=20)).date().isoformat() if d["end"] else None,
             "status": st_name,
             "categories": [sub_name],
             "occupancy": d["possession"],
