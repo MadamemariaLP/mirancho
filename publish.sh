@@ -5,6 +5,7 @@ export PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 [ "$1" = "--quick" ] || /usr/bin/python3 collector.py
 [ -d .git ] || exit 0
 git add web
-git diff --cached --quiet && exit 0
-git commit -q -m "Actualiza casas $(date '+%Y-%m-%d %H:%M')"
-git push -q origin main
+git diff --cached --quiet || git commit -q -m "Actualiza casas $(date '+%Y-%m-%d %H:%M')"
+# sube si hay algo local sin publicar
+[ -n "$(git log origin/main..main --oneline 2>/dev/null)" ] && git push -q origin main
+exit 0
