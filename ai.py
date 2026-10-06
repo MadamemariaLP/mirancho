@@ -1,6 +1,6 @@
 """Análisis con Claude: estado de la casa, reforma por partidas y trampas legales.
 
-Necesita una clave en ~/casas-rurales/.env (ANTHROPIC_API_KEY=...) o credenciales del SDK.
+Necesita una clave en ~/mirancho/.env (ANTHROPIC_API_KEY=...) o credenciales del SDK.
 Se ejecuta con el Python del entorno virtual (.venv), donde está instalado `anthropic`.
 """
 import json
@@ -86,7 +86,7 @@ def available():
         return False, "Falta el SDK: arranca la app con ./start.sh"
     if os.environ.get("ANTHROPIC_API_KEY") or "ANTHROPIC_API_KEY=" in ((ROOT / ".env").read_text() if (ROOT / ".env").exists() else ""):
         return True, ""
-    return False, "Añade tu clave en ~/casas-rurales/.env (ANTHROPIC_API_KEY=...)"
+    return False, "Añade tu clave en ~/mirancho/.env (ANTHROPIC_API_KEY=...)"
 
 
 def facts_json(listing, geo=None):

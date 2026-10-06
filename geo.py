@@ -20,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "data" / "geo_cache.json"
-UA = "casas-rurales-personal/0.1 (uso personal)"
+UA = "mirancho-personal/0.1 (uso personal)"
 _lock = threading.Lock()
 _last_nominatim = [0.0]
 

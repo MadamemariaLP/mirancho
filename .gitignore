@@ -9,3 +9,6 @@ data/boe_cache.json
 data/geo_cache.json
 data/contacts.json
 data/ntfy.json
+
+# Datos privados del Mac
+PRIVADO.md
