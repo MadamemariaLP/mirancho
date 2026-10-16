@@ -37,6 +37,7 @@
     <button role="tab" data-view="alerts">🔔 Alertas <span id="alertCount" class="pill hot"></span></button>
     <button role="tab" data-view="map">🗺️ Mapa</button>
     <button role="tab" data-view="favs">★ Guardadas <span id="favCount" class="pill"></span></button>
+    <button role="tab" data-view="agencies">🤝 Agencias</button>
     <button role="tab" data-view="portals">🔗 Más portales</button>
   </nav>
 
@@ -137,6 +138,7 @@
       <div class="chips" id="favStatus"></div>
       <ul id="favs" class="cards"></ul>
     </div>
+    <div id="view-agencies" class="view" hidden></div>
     <div id="view-portals" class="view" hidden></div>
   </main>
 
@@ -157,6 +159,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script src="portals.js"></script>
+  <script src="agencies.js"></script>
   <script src="geo.js"></script>
   <script src="app.js"></script>
   <script src="detail.js"></script>

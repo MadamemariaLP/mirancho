@@ -336,3 +336,17 @@ dialog.mini textarea { margin-top: 8px; }
 .gallery a:only-child { flex-basis: 100%; }
 .gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; display: block; background: var(--surface-2); }
 .docs { padding-left: 18px; margin: 4px 0; display: grid; gap: 4px; font-size: .9rem; overflow-wrap: anywhere; }
+
+/* ---- agencias */
+.agencies .seg { margin-top: 12px; }
+.agencies textarea { width: 100%; }
+.agencies .card h3 { -webkit-line-clamp: 3; }
+.agencies .card .kind { margin-top: 4px; }
+.agencies .card .actions .btn { padding: 8px 12px; font-size: .86rem; }
+.hot { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; align-items: start; }
+.hotbtn { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; cursor: pointer; color: var(--ink); font: inherit; display: grid; gap: 2px; }
+.hotbtn b { font-size: .92rem; }
+.hotbtn .muted { font-size: .78rem; }
+.hotbtn.on { border-color: var(--zone); background: var(--zone-bg); }
+.hot .link { align-self: center; }
+.agencies .card-top { flex-wrap: wrap; }

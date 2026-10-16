@@ -218,11 +218,12 @@ function renderMap(res = filtered()) {
 function show(view) {
   current = view;
   document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.view === view));
-  for (const v of ["list", "alerts", "map", "favs", "portals"]) $("#view-" + v).hidden = v !== view;
-  $("#filters").hidden = view === "favs" || view === "portals" || view === "alerts";
+  for (const v of ["list", "alerts", "map", "favs", "agencies", "portals"]) $("#view-" + v).hidden = v !== view;
+  $("#filters").hidden = ["favs", "portals", "alerts", "agencies"].includes(view);
   if (view === "alerts") renderAlerts();
   if (view === "map") renderMap();
   if (view === "favs") renderFavs();
+  if (view === "agencies") renderAgencies($("#view-agencies"));
   if (view === "portals") renderPortals($("#view-portals"), +f.price);
 }
 
