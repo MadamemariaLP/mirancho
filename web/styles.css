@@ -350,3 +350,4 @@ dialog.mini textarea { margin-top: 8px; }
 .hotbtn.on { border-color: var(--zone); background: var(--zone-bg); }
 .hot .link { align-self: center; }
 .agencies .card-top { flex-wrap: wrap; }
+.agencies .card { cursor: default; }
